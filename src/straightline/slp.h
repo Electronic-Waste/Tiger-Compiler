@@ -149,6 +149,7 @@ class Table {
       : id(std::move(id)), value(value), tail(tail) {}
   int Lookup(const std::string &key) const;
   Table *Update(const std::string &key, int val) const;
+  void Show() const;
 
  private:
   std::string id;

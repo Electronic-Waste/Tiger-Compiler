@@ -35,7 +35,8 @@ int A::PrintStm::MaxArgs() const {
 
 Table *A::PrintStm::Interp(Table *t) const {
   // TODO: put your code here (lab1).
-  return exps->Interp(t)->t;              // Use Interp fucntion in ExpList to get result
+  IntAndTable *result = exps->Interp(t);
+  return result->t;              // Use Interp fucntion in ExpList to get result
 }
 
 /* *********** This part is for Exp ************* */
@@ -44,6 +45,7 @@ int A::IdExp::MaxArgs() const {
 }
 
 IntAndTable *A::IdExp::Interp(Table *t) const {
+  // std::cout << "id: " << id << std::endl;
   return new IntAndTable(t->Lookup(id), t);     // return the value of id; do not change Table t
 }
 
@@ -113,7 +115,9 @@ int A::LastExpList::NumExps() const {
 }
 
 IntAndTable *A::LastExpList::Interp(Table *t) const {
-  return exp->Interp(t);                    // Recursion end: execute exp
+  IntAndTable *result = exp->Interp(t);     
+  std::cout << result->i << std::endl;      // Recursion end: execute exp.
+  return result;               
 }
 
 /* *********** This part is for Table ************* */
@@ -129,5 +133,11 @@ int Table::Lookup(const std::string &key) const {
 
 Table *Table::Update(const std::string &key, int val) const {
   return new Table(key, val, this);
+}
+
+void Table::Show() const {
+  std::cout << id << ": " << value << "->";
+  if (tail != nullptr) tail->Show();
+  else std::cout << std::endl;
 }
 }  // namespace A
