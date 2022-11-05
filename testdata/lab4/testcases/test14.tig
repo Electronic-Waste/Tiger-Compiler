@@ -8,9 +8,6 @@ let
 	var rec := rectype {name="aname", id=0}
 	var arr := arrtype [3] of 0 
 
-	/*var rec : int := 1
-	var arr : int := 2*/
-
 in
 	if rec <> arr then 3 else 4
 end

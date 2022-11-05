@@ -203,12 +203,19 @@ type::Ty *IfExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
   if (typeid(*test_type) != typeid(type::IntTy)) {
     errormsg->Error(this->pos_, "invalid test exp type");
   }
+  if (typeid(*then_type) != typeid(type::VoidTy)) {
+    errormsg->Error(this->pos_, "if-then exp's body must produce no value");
+  }
   if (this->elsee_ != NULL) {
     type::Ty *else_type = this->elsee_->SemAnalyze(venv, tenv, labelcount, errormsg);
     if (!then_type->IsSameType(else_type)) {
       errormsg->Error(this->pos_, "then exp and else exp dismatch");
     }
+    if (typeid(*else_type) != typeid(type::VoidTy)) {
+    errormsg->Error(this->pos_, "if-then exp's body must produce no value");
   }
+  }
+
   return type::VoidTy::Instance();
 }
 
@@ -325,7 +332,7 @@ void VarDec::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv, int labelcount,
                         err::ErrorMsg *errormsg) const {
   /* TODO: Put your lab4 code here */
   type::Ty *init_type = this->init_->SemAnalyze(venv, tenv, labelcount, errormsg);
-  if(typ_ != NULL && tenv->Look(this->typ_)->IsSameType(init_type)){
+  if(typ_ != NULL && !tenv->Look(this->typ_)->IsSameType(init_type)){
     errormsg->Error(this->pos_, "type dismatch");
   } 
   // else if(typ_ == NULL && typeid(*init_type) == typeid(type::NilTy)){
@@ -338,12 +345,48 @@ void TypeDec::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv, int labelcount,
                          err::ErrorMsg *errormsg) const {
   /* TODO: Put your lab4 code here */
   std::list<NameAndTy *> name_and_ty_list = this->types_->GetList();
+  std::list<sym::Symbol*> sym_dec_list;
+  std::list<sym::Symbol*> sym_read_list;
+  bool is_cycle = false;
+  // std::fstream file;
+  // file.open("./log", std::ios::out);
+  // file << "1111";
+  /* Type declaration (including recursive declaration) */
   for (NameAndTy *name_and_ty : name_and_ty_list) {
-    if (typeid(*(name_and_ty->ty_)) == typeid(type::RecordTy)) {
+    if (typeid(*(name_and_ty->ty_)) == typeid(absyn::RecordTy)) {
       tenv->Enter(name_and_ty->name_, new type::NameTy(name_and_ty->name_, NULL));
+      // file << "22222";
     }
+    sym_dec_list.push_back(name_and_ty->name_);
     tenv->Enter(name_and_ty->name_, name_and_ty->ty_->SemAnalyze(tenv, errormsg));
   }
+  /* Detecting type cycle */
+  sym::Symbol *sym_it = sym_dec_list.front();
+  type::Ty *sym_type = tenv->Look(sym_it);
+  while (!sym_dec_list.empty()) {
+    sym_read_list.push_back(sym_it);
+    if (typeid(*sym_type) == typeid(type::NameTy)) {
+      for (sym::Symbol *sym_read_it : sym_read_list) {
+        if (sym_it->Name() == sym_read_it->Name()) {
+          is_cycle = true;
+          errormsg->Error(this->pos_, "illegal type cycle");
+        }
+      }
+      if (is_cycle) break;
+      else {
+        sym_it = ((type::NameTy *)sym_type)->sym_;
+        sym_type = ((type::NameTy *)sym_type)->ty_;
+        continue;
+      }
+    }
+    sym_dec_list.pop_front();
+    sym_read_list.clear();
+    if (!sym_dec_list.empty()) {
+      sym_it = sym_dec_list.front();
+      sym_type = tenv->Look(sym_it);
+    }
+  }
+  // file.close();
 }
 
 type::Ty *NameTy::SemAnalyze(env::TEnvPtr tenv, err::ErrorMsg *errormsg) const {
