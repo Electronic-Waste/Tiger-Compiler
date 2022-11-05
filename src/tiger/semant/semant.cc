@@ -91,7 +91,7 @@ type::Ty *CallExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
   /* TODO: Put your lab4 code here */
   env::EnvEntry *func_entry = venv->Look(this->func_);
   if (func_entry == NULL || typeid(*func_entry) != typeid(env::FunEntry)) {
-    errormsg->Error(this->pos_, "undefined function");
+    errormsg->Error(this->pos_, "undefined function %s", this->func_->Name().data());
     return type::VoidTy::Instance();
   }
   /* Check actuals with formals declared before */
@@ -120,12 +120,17 @@ type::Ty *OpExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
   /* TODO: Put your lab4 code here */
   type::Ty *left_type = left_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
   type::Ty *right_type = right_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
-  if (typeid(*left_type) != typeid(*right_type))
-    errormsg->Error(this->pos_, "same type required");
-  if (typeid(*left_type) != typeid(type::IntTy)) 
-    errormsg->Error(this->pos_, "integer required");
-  if (typeid(*right_type) != typeid(type::IntTy)) 
-    errormsg->Error(this->pos_, "integer required");
+  if (this->oper_ == absyn::PLUS_OP || this->oper_ == absyn::MINUS_OP ||
+      this->oper_ == absyn::TIMES_OP || this->oper_ == absyn::DIVIDE_OP) {
+    if (typeid(*left_type) != typeid(type::IntTy)) 
+      errormsg->Error(this->pos_, "integer required");
+    if (typeid(*right_type) != typeid(type::IntTy)) 
+      errormsg->Error(this->pos_, "integer required");
+  }
+  else {
+    if (!left_type->IsSameType(right_type))
+      errormsg->Error(this->pos_, "same type required");
+  }
   return type::IntTy::Instance();
 }
 
@@ -168,12 +173,13 @@ type::Ty *SeqExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
                              int labelcount, err::ErrorMsg *errormsg) const {
   /* TODO: Put your lab4 code here */
   std::list<Exp *> seqexp_list = this->seq_->GetList();
+  type::Ty *ret_type = type::VoidTy::Instance();
   auto start = seqexp_list.cbegin();
   auto end = seqexp_list.cend();
   for (; start != end; ++start) {
-    (*start)->SemAnalyze(venv, tenv, labelcount, errormsg);
+    ret_type = (*start)->SemAnalyze(venv, tenv, labelcount, errormsg);
   }
-  return type::VoidTy::Instance();  
+  return ret_type;  
 }
 
 type::Ty *AssignExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
@@ -200,20 +206,20 @@ type::Ty *IfExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
   /* TODO: Put your lab4 code here */
   type::Ty *test_type = this->test_->SemAnalyze(venv, tenv, labelcount, errormsg);
   type::Ty *then_type = this->then_->SemAnalyze(venv, tenv, labelcount, errormsg);
+  type::Ty *result_type = type::VoidTy::Instance();
   if (typeid(*test_type) != typeid(type::IntTy)) {
     errormsg->Error(this->pos_, "invalid test exp type");
-  }
-  if (typeid(*then_type) != typeid(type::VoidTy)) {
-    errormsg->Error(this->pos_, "if-then exp's body must produce no value");
   }
   if (this->elsee_ != NULL) {
     type::Ty *else_type = this->elsee_->SemAnalyze(venv, tenv, labelcount, errormsg);
     if (!then_type->IsSameType(else_type)) {
       errormsg->Error(this->pos_, "then exp and else exp dismatch");
     }
-    if (typeid(*else_type) != typeid(type::VoidTy)) {
-    errormsg->Error(this->pos_, "if-then exp's body must produce no value");
   }
+  else {
+    if (typeid(*test_type) != typeid(type::VoidTy)) {
+      errormsg->Error(this->pos_, "if-then exp's body must produce no value");
+    }
   }
 
   return type::VoidTy::Instance();
@@ -309,7 +315,9 @@ void FunctionDec::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
   std::list<FunDec *> fundec_list = this->functions_->GetList();
   /* First: input function head (function name, formals list, result type) */
   for (FunDec *fundec : fundec_list) {
-    type::Ty *result_type = tenv->Look(fundec->result_);
+    type::Ty *result_type = type::VoidTy::Instance();
+    if (fundec->result_ != NULL)
+      result_type = tenv->Look(fundec->result_);
     type::TyList *formalTys = fundec->params_->MakeFormalTyList(tenv, errormsg);
     venv->Enter(fundec->name_, new env::FunEntry(formalTys, result_type));
   }
@@ -321,7 +329,10 @@ void FunctionDec::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
       venv->Enter(param_it->name_, new env::VarEntry(param_it->ty_));
     type::Ty *body_type = fundec->body_->SemAnalyze(venv, tenv, labelcount, errormsg);
     type::Ty *result_type = tenv->Look(fundec->result_);
-    if (result_type == NULL || !result_type->IsSameType(body_type)) {
+    if (typeid(*result_type) == typeid(type::VoidTy) && !result_type->IsSameType(body_type)) {
+      errormsg->Error(this->pos_, "procedure returns value");
+    }
+    else if (!result_type->IsSameType(body_type)) {
       errormsg->Error(this->pos_, "the return value dismatches with result type!");
     }
     venv->EndScope();
@@ -348,14 +359,9 @@ void TypeDec::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv, int labelcount,
   std::list<sym::Symbol*> sym_dec_list;
   std::list<sym::Symbol*> sym_read_list;
   bool is_cycle = false;
-  // std::fstream file;
-  // file.open("./log", std::ios::out);
-  // file << "1111";
-  /* Type declaration (including recursive declaration) */
   for (NameAndTy *name_and_ty : name_and_ty_list) {
     if (typeid(*(name_and_ty->ty_)) == typeid(absyn::RecordTy)) {
       tenv->Enter(name_and_ty->name_, new type::NameTy(name_and_ty->name_, NULL));
-      // file << "22222";
     }
     sym_dec_list.push_back(name_and_ty->name_);
     tenv->Enter(name_and_ty->name_, name_and_ty->ty_->SemAnalyze(tenv, errormsg));
@@ -386,7 +392,6 @@ void TypeDec::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv, int labelcount,
       sym_type = tenv->Look(sym_it);
     }
   }
-  // file.close();
 }
 
 type::Ty *NameTy::SemAnalyze(env::TEnvPtr tenv, err::ErrorMsg *errormsg) const {
