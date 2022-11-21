@@ -57,12 +57,15 @@ public:
   Level *parent_;
 
   /* TODO: Put your lab5 code here */
+  Level(frame::Frame *frame, Level *parent)
+      : frame_(frame), parent_(parent) {}
 };
 
 class ProgTr {
 public:
   // TODO: Put your lab5 code here */
-
+  ProgTr(std::unique_ptr<absyn::AbsynTree> absyn_tree, std::unique_ptr<err::ErrorMsg> errormsg)
+      : absyn_tree_(std::move(absyn_tree)), errormsg_(std::move(errormsg)) {}
   /**
    * Translate IR tree
    */
