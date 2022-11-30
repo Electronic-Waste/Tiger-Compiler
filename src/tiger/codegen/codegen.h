@@ -47,6 +47,14 @@ public:
     return std::move(assem_instr_);
   }
 
+  void StoreCalleeRegisters(assem::InstrList &instr_list, std::string_view fs);
+
+  void RestoreCalleeRegisters(assem::InstrList &instr_list, std::string_view fs);
+
+  void PushReg(assem::InstrList &instr_list, temp::Temp *dst_addr, temp::Temp *reg);
+
+  void PopReg(assem::InstrList &instr_list, temp::Temp *src_addr, temp::Temp *reg);
+
 private:
   frame::Frame *frame_;
   std::string fs_; // Frame size label_

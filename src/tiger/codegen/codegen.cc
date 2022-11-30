@@ -14,6 +14,91 @@ constexpr int maxlen = 1024;
 
 namespace cg {
 
+void CodeGen::PushReg(assem::InstrList &instr_list, temp::Temp *dst_addr, temp::Temp *reg) {
+  this->frame_->current_stack_pos -= reg_manager->WordSize();
+  instr_list.Append(
+    new assem::OperInstr(
+      "subq $" + std::to_string(reg_manager->WordSize()) + ",`d0",
+      new temp::TempList(dst_addr), NULL, 
+      NULL
+    )
+  );
+  instr_list.Append(
+    new assem::OperInstr(
+      "movq `s0,(`d0)",
+      new temp::TempList(dst_addr), 
+      new temp::TempList(reg),
+      NULL
+    )
+  );
+}
+
+void CodeGen::PopReg(assem::InstrList &instr_list, temp::Temp *src_addr, temp::Temp *reg) {
+  this->frame_->current_stack_pos += reg_manager->WordSize();
+  instr_list.Append(
+    new assem::OperInstr(
+      "movq (`s0),`d0",
+      new temp::TempList(reg),
+      new temp::TempList(src_addr),
+      NULL
+    )
+  );
+  instr_list.Append(
+    new assem::OperInstr(
+      "addq $" + std::to_string(reg_manager->WordSize()) + ",`d0",
+      new temp::TempList(src_addr), NULL, 
+      NULL
+    )
+  );
+}
+
+void CodeGen::StoreCalleeRegisters(assem::InstrList &instr_list, std::string_view fs) {
+  temp::Temp *ptr_reg = temp::TempFactory::NewTemp();
+  instr_list.Append(
+    new assem::OperInstr(
+      "leaq " + fs + "_framesize(%rsp),`d0",
+      new temp::TempList(ptr_reg),
+      NULL, NULL
+    )
+  );
+  instr_list.Append(
+    new assem::OperInstr(
+      "addq $" + std::to_string(this->frame_->current_stack_pos) + ",`d0",
+      new temp::TempList(ptr_reg),
+      new temp::TempList(ptr_reg),
+      NULL
+    )
+  );
+
+  temp::TempList *calleesaves = reg_manager->CalleeSaves();
+  for (temp::Temp *t : calleesaves->GetList()) 
+    PushReg(instr_list, ptr_reg, t);
+  
+}
+
+void CodeGen::RestoreCalleeRegisters(assem::InstrList &instr_list, std::string_view fs) {
+  temp::Temp *ptr_reg = temp::TempFactory::NewTemp();
+  instr_list.Append(
+    new assem::OperInstr(
+      "leaq " + fs + "_framesize(%rsp),`d0",
+      new temp::TempList(ptr_reg),
+      NULL, NULL
+    )
+  );
+  instr_list.Append(
+    new assem::OperInstr(
+      "addq $" + std::to_string(this->frame_->current_stack_pos) + ",`d0",
+      new temp::TempList(ptr_reg),
+      new temp::TempList(ptr_reg),
+      NULL
+    )
+  );
+
+  temp::TempList *calleesaves = reg_manager->CalleeSaves();
+  for (int i = 5; i >=0; i--) 
+    PopReg(instr_list, ptr_reg, calleesaves->NthTemp(i));
+}
+
 void CodeGen::Codegen() {
   /* TODO: Put your lab5 code here */
   assem::InstrList *instr_list = new assem::InstrList;
@@ -21,13 +106,14 @@ void CodeGen::Codegen() {
   this->fs_ = this->frame_->label->Name();
 
   /* Store callee-saved registers */
+  StoreCalleeRegisters(*instr_list, this->fs_);
 
   /* Generate code */
   for (tree::Stm *stm : stm_list)
     stm->Munch(*instr_list, this->fs_);
 
   /* Restore callee-saved registers */
-  
+  RestoreCalleeRegisters(*instr_list, this->fs_);
   
   assem_instr_ = std::make_unique<AssemInstr>(frame::ProcEntryExit2(instr_list));
 }
@@ -251,6 +337,7 @@ temp::Temp *MemExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
       )
     );
   return result_temp;
+
   /* ************************ Note ************************* */
   /* This part of code is unnecessary, because exp_->Munch will pass a temp
      to result_temp. We just need to "move (`s0),`d0" */
