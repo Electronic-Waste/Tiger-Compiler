@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <list>
 #include <string>
+#include <vector>
 
 #include "tiger/frame/temp.h"
 
@@ -33,12 +34,12 @@ class ExpList;
 class StmList;
 
 enum BinOp {
+  AND_OP,
+  OR_OP,
   PLUS_OP,
   MINUS_OP,
   MUL_OP,
   DIV_OP,
-  AND_OP,
-  OR_OP,
   LSHIFT_OP,
   RSHIFT_OP,
   ARSHIFT_OP,
@@ -50,8 +51,8 @@ enum RelOp {
   EQ_OP,
   NE_OP,
   LT_OP,
-  GT_OP,
   LE_OP,
+  GT_OP,
   GE_OP,
   ULT_OP,
   ULE_OP,
