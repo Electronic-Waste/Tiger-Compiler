@@ -148,7 +148,8 @@ type::Ty *RecordExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
     errormsg->Error(this->pos_, "undefined type %s", this->typ_->Name().data());
     return type::VoidTy::Instance();
   }
-  else if (typeid(*record_type) != typeid(type::RecordTy)) {
+  record_type = record_type->ActualTy();
+  if (typeid(*record_type) != typeid(type::RecordTy)) {
     errormsg->Error(this->pos_, "not a record type");
     return type::VoidTy::Instance();
   }
@@ -169,6 +170,8 @@ type::Ty *RecordExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
       errormsg->Error(this->pos_, "field name dismatches");
       return type::VoidTy::Instance();
     }
+    int isnull = (((type::NameTy *) (*formal_start)->ty_)->ActualTy() == NULL) ? 0 : 1;
+    printf("name: %s, ty: %d\n", (*formal_start)->name_->Name().data(), isnull);
     type::Ty *exp_type = (*actual_start)->exp_->SemAnalyze(venv, tenv, labelcount, errormsg);
     if (!(*formal_start)->ty_->IsSameType(exp_type)) {
       errormsg->Error(this->pos_, "actual type dismatches with formal type declared");
@@ -211,6 +214,7 @@ type::Ty *AssignExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
     errormsg->Error(this->pos_, "unmatched assign exp");
     return type::VoidTy::Instance();
   }
+  return type::VoidTy::Instance();
 }
 
 type::Ty *IfExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
@@ -367,49 +371,52 @@ void VarDec::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv, int labelcount,
   venv->Enter(this->var_, new env::VarEntry(init_type));
 }
 
+// {name->absyn::Ty *}->{name->type::Ty *}
 void TypeDec::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv, int labelcount,
                          err::ErrorMsg *errormsg) const {
   /* TODO: Put your lab4 code here */
   std::list<NameAndTy *> name_and_ty_list = this->types_->GetList();
-  std::list<sym::Symbol*> sym_dec_list;
-  std::list<sym::Symbol*> sym_read_list;
   bool is_cycle = false;
   for (NameAndTy *name_and_ty : name_and_ty_list) {
     if (tenv->Look(name_and_ty->name_) != NULL) {
       errormsg->Error(this->pos_, "two types have the same name");
       continue;
     }
-    if (typeid(*(name_and_ty->ty_)) == typeid(absyn::RecordTy)) {
-      tenv->Enter(name_and_ty->name_, new type::NameTy(name_and_ty->name_, NULL));
-    }
-    sym_dec_list.push_back(name_and_ty->name_);
-    tenv->Enter(name_and_ty->name_, name_and_ty->ty_->SemAnalyze(tenv, errormsg));
+    tenv->Enter(name_and_ty->name_, new type::NameTy(name_and_ty->name_, NULL));
+  }
+  for (NameAndTy *name_and_ty : name_and_ty_list) {
+    type::NameTy *name_ty = (type::NameTy *) tenv->Look(name_and_ty->name_);
+    name_ty->ty_ = name_and_ty->ty_->SemAnalyze(tenv, errormsg);
   }
   /* Detecting type cycle */
-  sym::Symbol *sym_it = sym_dec_list.front();
-  type::Ty *sym_type = tenv->Look(sym_it);
-  while (!sym_dec_list.empty()) {
-    sym_read_list.push_back(sym_it);
-    if (typeid(*sym_type) == typeid(type::NameTy)) {
-      for (sym::Symbol *sym_read_it : sym_read_list) {
-        if (sym_it->Name() == sym_read_it->Name()) {
-          is_cycle = true;
-          errormsg->Error(this->pos_, "illegal type cycle");
+  bool iscycle = false;
+  std::vector<sym::Symbol *> sym_vec;
+  for (NameAndTy *name_and_ty : name_and_ty_list) {
+    sym::Symbol *sym = name_and_ty->name_;
+    sym_vec.push_back(sym);
+    type::Ty *ty = tenv->Look(sym);
+    while (true) {
+      type::Ty *name_ty = ((type::NameTy *) ty)->ty_;
+      if (typeid(*name_ty) == typeid(type::NameTy)) {
+        sym::Symbol *next_sym = ((type::NameTy *) name_ty)->sym_;
+        for (sym::Symbol *s : sym_vec) {
+          if (s == next_sym) {
+            is_cycle = true;
+            break;
+          }
         }
+        if (is_cycle) break;
+        else ty = name_ty;
       }
-      if (is_cycle) break;
       else {
-        sym_it = ((type::NameTy *)sym_type)->sym_;
-        sym_type = ((type::NameTy *)sym_type)->ty_;
-        continue;
+        break;
       }
     }
-    sym_dec_list.pop_front();
-    sym_read_list.clear();
-    if (!sym_dec_list.empty()) {
-      sym_it = sym_dec_list.front();
-      sym_type = tenv->Look(sym_it);
+    if (is_cycle) {
+      errormsg->Error(pos_, "illegal type cycle");
+      break;
     }
+    sym_vec.clear();
   }
 }
 
