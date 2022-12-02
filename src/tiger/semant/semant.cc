@@ -24,7 +24,7 @@ type::Ty *SimpleVar::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
 type::Ty *FieldVar::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
                                int labelcount, err::ErrorMsg *errormsg) const {
   /* TODO: Put your lab4 code here */
-  type::Ty *var_type = this->var_->SemAnalyze(venv, tenv, labelcount, errormsg);
+  type::Ty *var_type = this->var_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
   /* Check type */
   if (var_type == NULL || typeid(*var_type) != typeid(type::RecordTy)) {
     errormsg->Error(this->pos_, "not a record type");
@@ -49,13 +49,13 @@ type::Ty *SubscriptVar::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
                                    err::ErrorMsg *errormsg) const {
   /* TODO: Put your lab4 code here */
   /* Check var */
-  type::Ty *var_type = this->var_->SemAnalyze(venv, tenv, labelcount, errormsg);
+  type::Ty *var_type = this->var_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
   if (var_type == NULL || typeid(*var_type) != typeid(type::ArrayTy)) {
     errormsg->Error(this->pos_, "array type required");
     return type::VoidTy::Instance();
   }
   /* Check subscript */
-  type::Ty *subscript_type = this->subscript_->SemAnalyze(venv, tenv, labelcount, errormsg);
+  type::Ty *subscript_type = this->subscript_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
   if (subscript_type == NULL || typeid(*subscript_type) != typeid(type::IntTy)) {
     errormsg->Error(this->pos_, "invalid index type");
     return type::VoidTy::Instance();
@@ -170,8 +170,6 @@ type::Ty *RecordExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
       errormsg->Error(this->pos_, "field name dismatches");
       return type::VoidTy::Instance();
     }
-    int isnull = (((type::NameTy *) (*formal_start)->ty_)->ActualTy() == NULL) ? 0 : 1;
-    printf("name: %s, ty: %d\n", (*formal_start)->name_->Name().data(), isnull);
     type::Ty *exp_type = (*actual_start)->exp_->SemAnalyze(venv, tenv, labelcount, errormsg);
     if (!(*formal_start)->ty_->IsSameType(exp_type)) {
       errormsg->Error(this->pos_, "actual type dismatches with formal type declared");
@@ -205,8 +203,8 @@ type::Ty *AssignExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
       if (flag) errormsg->Error(this->pos_, "loop variable can't be assigned");
     }
   }
-  type::Ty *assign_type = this->var_->SemAnalyze(venv, tenv, labelcount, errormsg);
-  type::Ty *exp_type = this->exp_->SemAnalyze(venv, tenv, labelcount, errormsg);
+  type::Ty *assign_type = this->var_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
+  type::Ty *exp_type = this->exp_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
   if (typeid(*assign_type) == typeid(type::VoidTy)) {
     return type::VoidTy::Instance();
   }
@@ -220,14 +218,14 @@ type::Ty *AssignExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
 type::Ty *IfExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
                             int labelcount, err::ErrorMsg *errormsg) const {
   /* TODO: Put your lab4 code here */
-  type::Ty *test_type = this->test_->SemAnalyze(venv, tenv, labelcount, errormsg);
-  type::Ty *then_type = this->then_->SemAnalyze(venv, tenv, labelcount, errormsg);
+  type::Ty *test_type = this->test_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
+  type::Ty *then_type = this->then_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
   type::Ty *result_type = type::VoidTy::Instance();
   if (typeid(*test_type) != typeid(type::IntTy)) {
     errormsg->Error(this->pos_, "invalid test exp type");
   }
   if (this->elsee_ != NULL) {
-    type::Ty *else_type = this->elsee_->SemAnalyze(venv, tenv, labelcount, errormsg);
+    type::Ty *else_type = this->elsee_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
     if (!then_type->IsSameType(else_type)) {
       errormsg->Error(this->pos_, "then exp and else exp type mismatch");
     }
@@ -244,8 +242,8 @@ type::Ty *IfExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
 type::Ty *WhileExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
                                int labelcount, err::ErrorMsg *errormsg) const {
   /* TODO: Put your lab4 code here */
-  type::Ty *test_type = this->test_->SemAnalyze(venv, tenv, labelcount, errormsg);
-  type::Ty *body_type = this->body_->SemAnalyze(venv, tenv, labelcount + 1, errormsg);
+  type::Ty *test_type = this->test_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
+  type::Ty *body_type = this->body_->SemAnalyze(venv, tenv, labelcount + 1, errormsg)->ActualTy();
   if (typeid(*test_type) != typeid(type::IntTy)) {
     errormsg->Error(this->pos_, "invalid test exp type");
   }
@@ -259,13 +257,13 @@ type::Ty *ForExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
                              int labelcount, err::ErrorMsg *errormsg) const {
   /* TODO: Put your lab4 code here */
   venv->BeginScope();
-  type::Ty *lo_type = lo_->SemAnalyze(venv, tenv, labelcount, errormsg);
-  type::Ty *hi_type = hi_->SemAnalyze(venv, tenv, labelcount, errormsg);
+  type::Ty *lo_type = lo_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
+  type::Ty *hi_type = hi_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
   if (typeid(*lo_type) != typeid(type::IntTy) || typeid(*hi_type) != typeid(type::IntTy)) {
     errormsg->Error(this->pos_, "for exp's range type is not integer");
   }
   venv->Enter(this->var_, new env::VarEntry(type::IntTy::Instance(), true));
-  type::Ty *body_type = body_->SemAnalyze(venv, tenv, labelcount + 1, errormsg);
+  type::Ty *body_type = body_->SemAnalyze(venv, tenv, labelcount + 1, errormsg)->ActualTy();
   if (typeid(*body_type) != typeid(type::VoidTy)) {
     errormsg->Error(this->pos_, "for body must produce no value");
   }
@@ -308,8 +306,8 @@ type::Ty *ArrayExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
     errormsg->Error(this->pos_, "undefined type");
   }
   type::Ty *element_type = ((type::ArrayTy *) array_type)->ty_;
-  type::Ty *size_type = size_->SemAnalyze(venv, tenv, labelcount, errormsg);
-  type::Ty *init_type = init_->SemAnalyze(venv, tenv, labelcount, errormsg);
+  type::Ty *size_type = size_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
+  type::Ty *init_type = init_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
   if (typeid(*size_type) != typeid(type::IntTy)) {
     errormsg->Error(this->pos_, "invalid size type");
   }
@@ -347,7 +345,7 @@ void FunctionDec::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
     std::list<type::Field *> param_list = fundec->params_->MakeFieldList(tenv, errormsg)->GetList();
     for (type::Field *param_it : param_list) 
       venv->Enter(param_it->name_, new env::VarEntry(param_it->ty_));
-    type::Ty *body_type = fundec->body_->SemAnalyze(venv, tenv, labelcount, errormsg);
+    type::Ty *body_type = fundec->body_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
     if (fundec->result_ == NULL && typeid(*body_type) != typeid(type::VoidTy::Instance())) {
       errormsg->Error(this->pos_, "procedure returns value");
     }
@@ -361,7 +359,7 @@ void FunctionDec::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
 void VarDec::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv, int labelcount,
                         err::ErrorMsg *errormsg) const {
   /* TODO: Put your lab4 code here */
-  type::Ty *init_type = this->init_->SemAnalyze(venv, tenv, labelcount, errormsg);
+  type::Ty *init_type = this->init_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
   if(typ_ != NULL && !tenv->Look(this->typ_)->IsSameType(init_type)){
     errormsg->Error(this->pos_, "type mismatch");
   } 
