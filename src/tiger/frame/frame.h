@@ -81,11 +81,13 @@ class Frame {
   /* TODO: Put your lab5 code here */
 public:
   int current_stack_pos;
-  temp::Label *label;
+  temp::Label *name_;
   std::list<tree::Stm *> *moves_;
   std::list<frame::Access *> *formals_;
 
   virtual frame::Access *AllocLocal(bool isEscape) = 0;
+
+  virtual std::string GetLabel() {return this->name_->Name();}
 
   Frame() = default;
 };

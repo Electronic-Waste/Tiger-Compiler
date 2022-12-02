@@ -56,7 +56,7 @@ void CodeGen::StoreCalleeRegisters(assem::InstrList &instr_list, std::string_vie
   temp::Temp *ptr_reg = temp::TempFactory::NewTemp();
   instr_list.Append(
     new assem::OperInstr(
-      "leaq " + fs + "_framesize(%rsp),`d0",
+      "leaq " + std::string(fs) + "_framesize(%rsp),`d0",
       new temp::TempList(ptr_reg),
       NULL, NULL
     )
@@ -80,7 +80,7 @@ void CodeGen::RestoreCalleeRegisters(assem::InstrList &instr_list, std::string_v
   temp::Temp *ptr_reg = temp::TempFactory::NewTemp();
   instr_list.Append(
     new assem::OperInstr(
-      "leaq " + fs + "_framesize(%rsp),`d0",
+      "leaq " + std::string(fs) + "_framesize(%rsp),`d0",
       new temp::TempList(ptr_reg),
       NULL, NULL
     )
@@ -103,7 +103,7 @@ void CodeGen::Codegen() {
   /* TODO: Put your lab5 code here */
   assem::InstrList *instr_list = new assem::InstrList;
   std::list<tree::Stm *> stm_list = this->traces_->GetStmList()->GetList();
-  this->fs_ = this->frame_->label->Name();
+  this->fs_ = this->frame_->name_->Name();
 
   /* Store callee-saved registers */
   StoreCalleeRegisters(*instr_list, this->fs_);
@@ -391,7 +391,7 @@ temp::Temp *TempExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
   temp::Temp *result_temp = temp::TempFactory::NewTemp();
   instr_list.Append(
     new assem::OperInstr(
-      "leaq " + fs + "_framesize(%rsp), 'd0",
+      "leaq " + std::string(fs) + "_framesize(%rsp), 'd0",
       new temp::TempList(result_temp),
       new temp::TempList(reg_manager->StackPointer()),
       NULL

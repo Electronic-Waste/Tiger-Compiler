@@ -290,6 +290,10 @@ private:
 RelOp NotRel(RelOp);  // a op b == not(a NotRel(op) b)
 RelOp Commute(RelOp); // a op b == b Commute(op) a
 
+temp::TempList *MoveArgs(assem::InstrList &instr_list, temp::TempList *arg_list, std::string_view fs);
+void SetSP(assem::InstrList &instr_list, int offset);
+void ResetSP(assem::InstrList &instr_list, int offset);
+
 } // namespace tree
 
 #endif // TIGER_TRANSLATE_TREE_H_

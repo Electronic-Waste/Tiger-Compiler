@@ -104,7 +104,7 @@ tree::Exp *InRegAccess::ToExp(tree::Exp *framePtr) const {
 X64Frame::X64Frame(temp::Label *name, std::list<bool> *formals) {
   /* Initialize some variables in the class */
   this->current_stack_pos = -8;
-  label = name;
+  name_ = name;
   moves_ = new std::list<tree::Stm *>;
   formals_ = new std::list<frame::Access *>;
 
@@ -182,7 +182,7 @@ assem::Proc *ProcEntryExit3(frame::Frame *frame, assem::InstrList *body) {
   sprintf(
     buf,
     "PROCEDURE %s\n",
-    temp::LabelFactory::LabelString(frame->label)
+    temp::LabelFactory::LabelString(frame->name_)
   );
   return new assem::Proc(std::string(buf), body, "END\n");
 }
