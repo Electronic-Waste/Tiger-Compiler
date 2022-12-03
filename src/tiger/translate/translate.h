@@ -62,7 +62,6 @@ public:
 
   Level(Level *parent, temp::Label *name, std::list<bool> *formals)
       : parent_(parent) {
-          if (formals != NULL) formals->push_front(true);
           frame_ = new frame::X64Frame(name, formals);
       }
 
@@ -76,7 +75,7 @@ public:
         tenv_(new env::TEnv), venv_(new env::VEnv) {
           FillBaseTEnv();
           FillBaseVEnv();
-          temp::Label *main_label = temp::LabelFactory::NamedLabel("main");
+          temp::Label *main_label = temp::LabelFactory::NamedLabel("tigermain");
           main_level_.reset(new tr::Level(NULL, main_label, NULL));
         }
   /**

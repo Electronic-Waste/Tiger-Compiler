@@ -102,11 +102,15 @@ tree::Exp *InRegAccess::ToExp(tree::Exp *framePtr) const {
 }
 
 X64Frame::X64Frame(temp::Label *name, std::list<bool> *formals) {
+  
   /* Initialize some variables in the class */
   this->current_stack_pos = -8;
   name_ = name;
   moves_ = new std::list<tree::Stm *>;
   formals_ = new std::list<frame::Access *>;
+
+  /* Check formals == NULL ? */
+  if (formals == NULL) return;
 
   /* Alloc local variable for formals */
   for (bool escape : *formals) 
@@ -163,6 +167,10 @@ tree::Exp *ExternelCall(std::string func_name, tree::ExpList *args) {
 }
 
 tree::Stm *ProcEntryExit1(frame::Frame *frame, tree::Stm *stm) {
+  /* Empty moves_ means that we have reached the "tigermain" level.
+     There is no view shift and we just need to address return stm */
+  if (frame->moves_->size() == 0) return stm;
+
   auto stm_it = frame->moves_->begin();
   auto end_it = frame->moves_->end();
   auto seq_stm = *stm_it;
