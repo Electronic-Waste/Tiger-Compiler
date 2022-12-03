@@ -190,7 +190,7 @@ assem::Proc *ProcEntryExit3(frame::Frame *frame, assem::InstrList *body) {
   sprintf(
     buf,
     "PROCEDURE %s\n",
-    temp::LabelFactory::LabelString(frame->name_)
+    temp::LabelFactory::LabelString(frame->name_).data()
   );
   return new assem::Proc(std::string(buf), body, "END\n");
 }

@@ -208,7 +208,7 @@ type::Ty *AssignExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
   if (typeid(*assign_type) == typeid(type::VoidTy)) {
     return type::VoidTy::Instance();
   }
-  else if (typeid(*assign_type) != typeid(*exp_type)) {
+  else if (!assign_type->IsSameType(exp_type)) {
     errormsg->Error(this->pos_, "unmatched assign exp");
     return type::VoidTy::Instance();
   }
@@ -229,14 +229,17 @@ type::Ty *IfExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
     if (!then_type->IsSameType(else_type)) {
       errormsg->Error(this->pos_, "then exp and else exp type mismatch");
     }
+    else {
+      result_type = then_type;
+    }
   }
   else {
-    if (typeid(*test_type) != typeid(type::VoidTy)) {
+    if (typeid(*then_type) != typeid(type::VoidTy)) {
       errormsg->Error(this->pos_, "if-then exp's body must produce no value");
     }
   }
 
-  return type::VoidTy::Instance();
+  return result_type;
 }
 
 type::Ty *WhileExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
@@ -305,13 +308,13 @@ type::Ty *ArrayExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
   if (array_type == NULL || typeid(*array_type) != typeid(type::ArrayTy)) {
     errormsg->Error(this->pos_, "undefined type");
   }
-  type::Ty *element_type = ((type::ArrayTy *) array_type)->ty_;
+  type::Ty *element_type = ((type::ArrayTy *) array_type)->ty_->ActualTy();
   type::Ty *size_type = size_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
   type::Ty *init_type = init_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
   if (typeid(*size_type) != typeid(type::IntTy)) {
     errormsg->Error(this->pos_, "invalid size type");
   }
-  if (typeid(*element_type) != typeid(*init_type)) {
+  if (!element_type->IsSameType(init_type)) {
     errormsg->Error(this->pos_, "type mismatch");
   }
   return array_type;
@@ -346,10 +349,10 @@ void FunctionDec::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
     for (type::Field *param_it : param_list) 
       venv->Enter(param_it->name_, new env::VarEntry(param_it->ty_));
     type::Ty *body_type = fundec->body_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
-    if (fundec->result_ == NULL && typeid(*body_type) != typeid(type::VoidTy::Instance())) {
+    if (fundec->result_ == NULL && typeid(*body_type) != typeid(type::VoidTy)) {
       errormsg->Error(this->pos_, "procedure returns value");
     }
-    else if (!tenv->Look(fundec->result_)->IsSameType(body_type)) {
+    else if (fundec->result_ != NULL && !tenv->Look(fundec->result_)->IsSameType(body_type)) {
       errormsg->Error(this->pos_, "the return value dismatches with result type!");
     }
     venv->EndScope();

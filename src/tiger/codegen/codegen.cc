@@ -138,7 +138,7 @@ void LabelStm::Munch(assem::InstrList &instr_list, std::string_view fs) {
   /* TODO: Put your lab5 code here */
   instr_list.Append(
     new assem::LabelInstr(
-      temp::LabelFactory::LabelString(this->label_) + ":",
+      temp::LabelFactory::LabelString(this->label_),
       this->label_
     )
   );
