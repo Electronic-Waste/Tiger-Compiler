@@ -598,11 +598,11 @@ tr::ExpAndTy *WhileExp::Translate(env::VEnvPtr venv, env::TEnvPtr tenv,
                                   tr::Level *level, temp::Label *label,            
                                   err::ErrorMsg *errormsg) const {
   /* TODO: Put your lab5 code here */
-  tr::ExpAndTy* test_exp_ty = this->test_->Translate(venv, tenv, level, label, errormsg);
-  tr::ExpAndTy* body_exp_ty = this->body_->Translate(venv, tenv, level, label, errormsg);
   temp::Label *test_label = temp::LabelFactory::NewLabel();
   temp::Label *body_label = temp::LabelFactory::NewLabel();
   temp::Label *done_label = temp::LabelFactory::NewLabel();
+  tr::ExpAndTy* test_exp_ty = this->test_->Translate(venv, tenv, level, label, errormsg);
+  tr::ExpAndTy* body_exp_ty = this->body_->Translate(venv, tenv, level, done_label, errormsg);
   tr::Cx test_cx = test_exp_ty->exp_->UnCx(errormsg);
   test_cx.trues_.DoPatch(body_label);
   test_cx.falses_.DoPatch(done_label);
@@ -633,14 +633,14 @@ tr::ExpAndTy *ForExp::Translate(env::VEnvPtr venv, env::TEnvPtr tenv,
                                 err::ErrorMsg *errormsg) const {
   /* TODO: Put your lab5 code here */
   venv->BeginScope();
-  tr::Access *it_access = tr::Access::AllocLocal(level, this->escape_);
-  tr::ExpAndTy *low_exp_ty = this->lo_->Translate(venv, tenv, level, label, errormsg);
-  tr::ExpAndTy *high_exp_ty = this->hi_->Translate(venv, tenv, level, label, errormsg);
   temp::Label *test_label = temp::LabelFactory::NewLabel();
   temp::Label *body_label = temp::LabelFactory::NewLabel();
   temp::Label *done_label = temp::LabelFactory::NewLabel();
+  tr::Access *it_access = tr::Access::AllocLocal(level, this->escape_);
+  tr::ExpAndTy *low_exp_ty = this->lo_->Translate(venv, tenv, level, label, errormsg);
+  tr::ExpAndTy *high_exp_ty = this->hi_->Translate(venv, tenv, level, label, errormsg);
   venv->Enter(this->var_, new env::VarEntry(it_access, low_exp_ty->ty_));
-  tr::ExpAndTy *body_exp_ty = this->body_->Translate(venv, tenv, level, label, errormsg);
+  tr::ExpAndTy *body_exp_ty = this->body_->Translate(venv, tenv, level, done_label, errormsg);
   tree::Exp *it_exp = it_access->access_->ToExp(new tree::TempExp(reg_manager->FramePointer()));
   tree::Stm *seq_stm = new tree::SeqStm(
     new tree::MoveStm(it_exp, low_exp_ty->exp_->UnEx()),
