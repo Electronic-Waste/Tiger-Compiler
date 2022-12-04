@@ -60,8 +60,9 @@ public:
   }
   [[nodiscard]] Cx UnCx(err::ErrorMsg *errormsg) override {
     /* TODO: Put your lab5 code here */
-    PatchList true_list, false_list;
-    tree::Stm *test_stm = new tree::CjumpStm(tree::RelOp::NE_OP, this->exp_, new tree::ConstExp(0), NULL, NULL);
+    tree::CjumpStm *test_stm = new tree::CjumpStm(tree::RelOp::NE_OP, this->exp_, new tree::ConstExp(0), NULL, NULL);
+    PatchList true_list(std::list<temp::Label **>{&(test_stm->true_label_)});
+    PatchList false_list(std::list<temp::Label **>{&(test_stm->false_label_)});
     return Cx(true_list, false_list, test_stm);
   }
 };
@@ -273,7 +274,7 @@ tr::ExpAndTy *CallExp::Translate(env::VEnvPtr venv, env::TEnvPtr tenv,
                                  tr::Level *level, temp::Label *label,
                                  err::ErrorMsg *errormsg) const {
   /* TODO: Put your lab5 code here */
-  env::FunEntry *func_entry = (env::FunEntry *) tenv->Look(this->func_);
+  env::FunEntry *func_entry = (env::FunEntry *) venv->Look(this->func_);
   std::list<absyn::Exp *> arg_list = this->args_->GetList();
   tree::ExpList *tree_arg_list = new tree::ExpList();
   tree::Exp *call_exp;
@@ -283,7 +284,7 @@ tr::ExpAndTy *CallExp::Translate(env::VEnvPtr venv, env::TEnvPtr tenv,
     tree_arg_list->Append(arg_exp_ty->exp_->UnEx());
   }
   /* External function call */
-  if (func_entry == NULL) {
+  if (func_entry->level_ == NULL) {
     call_exp = frame::ExternelCall(this->func_->Name(), tree_arg_list);
     result_ty = type::VoidTy::Instance();
   }
@@ -310,8 +311,48 @@ tr::ExpAndTy *OpExp::Translate(env::VEnvPtr venv, env::TEnvPtr tenv,
   tr::ExpAndTy *left_exp_ty = this->left_->Translate(venv, tenv, level, label, errormsg);
   tr::ExpAndTy *right_exp_ty = this->right_->Translate(venv, tenv, level, label, errormsg);
   switch (this->oper_) {
-    case absyn::AND_OP:
-    case absyn::OR_OP:
+    case absyn::AND_OP: {
+      tree::CjumpStm *stm = new tree::CjumpStm(
+        tree::RelOp::EQ_OP,
+        new tree::BinopExp(
+          tree::BinOp::PLUS_OP,
+          left_exp_ty->exp_->UnEx(),
+          right_exp_ty->exp_->UnEx()
+        ),
+        new tree::ConstExp(2),
+        NULL,
+        NULL
+      );
+      return new tr::ExpAndTy(
+        new tr::CxExp(
+          tr::PatchList(std::list<temp::Label **>{&(stm->true_label_)}),
+          tr::PatchList(std::list<temp::Label **>{&(stm->false_label_)}),
+          stm
+        ),
+        type::IntTy::Instance()
+      );
+    }
+    case absyn::OR_OP: {
+      tree::CjumpStm *stm = new tree::CjumpStm(
+        tree::RelOp::NE_OP,
+        new tree::BinopExp(
+          tree::BinOp::PLUS_OP,
+          left_exp_ty->exp_->UnEx(),
+          right_exp_ty->exp_->UnEx()
+        ),
+        new tree::ConstExp(0),
+        NULL,
+        NULL
+      );
+      return new tr::ExpAndTy(
+        new tr::CxExp(
+          tr::PatchList(std::list<temp::Label **>{&(stm->true_label_)}),
+          tr::PatchList(std::list<temp::Label **>{&(stm->false_label_)}),
+          stm
+        ),
+        type::IntTy::Instance()
+      );
+    }
     case absyn::PLUS_OP:
     case absyn::MINUS_OP:
     case absyn::TIMES_OP:
@@ -339,8 +380,8 @@ tr::ExpAndTy *OpExp::Translate(env::VEnvPtr venv, env::TEnvPtr tenv,
       );
       return new tr::ExpAndTy(
         new tr::CxExp(
-          tr::PatchList(std::list<temp::Label **>()),
-          tr::PatchList(std::list<temp::Label **>()),
+          tr::PatchList(std::list<temp::Label **>{&(stm->true_label_)}),
+          tr::PatchList(std::list<temp::Label **>{&(stm->false_label_)}),
           stm
         ),
         type::IntTy::Instance()
@@ -360,8 +401,8 @@ tr::ExpAndTy *OpExp::Translate(env::VEnvPtr venv, env::TEnvPtr tenv,
         );
         return new tr::ExpAndTy(
           new tr::CxExp(
-            tr::PatchList(std::list<temp::Label **>()),
-            tr::PatchList(std::list<temp::Label **>()),
+            tr::PatchList(std::list<temp::Label **>{&(stm->true_label_)}),
+            tr::PatchList(std::list<temp::Label **>{&(stm->false_label_)}),
             stm
           ),
           type::IntTy::Instance()
@@ -378,8 +419,8 @@ tr::ExpAndTy *OpExp::Translate(env::VEnvPtr venv, env::TEnvPtr tenv,
         );
         return new tr::ExpAndTy(
           new tr::CxExp(
-            tr::PatchList(std::list<temp::Label **>()),
-            tr::PatchList(std::list<temp::Label **>()),
+            tr::PatchList(std::list<temp::Label **>{&(stm->true_label_)}),
+            tr::PatchList(std::list<temp::Label **>{&(stm->false_label_)}),
             stm
           ),
           type::IntTy::Instance()

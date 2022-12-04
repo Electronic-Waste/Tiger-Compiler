@@ -391,7 +391,7 @@ temp::Temp *TempExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
   temp::Temp *result_temp = temp::TempFactory::NewTemp();
   instr_list.Append(
     new assem::OperInstr(
-      "leaq " + std::string(fs) + "_framesize(%rsp), 'd0",
+      "leaq " + std::string(fs) + "_framesize(%rsp),'d0",
       new temp::TempList(result_temp),
       new temp::TempList(reg_manager->StackPointer()),
       NULL
@@ -505,7 +505,7 @@ temp::TempList *MoveArgs(assem::InstrList &instr_list, temp::TempList *arg_list,
   temp::TempList *result_list = new temp::TempList();
   int params_passed = 0;
   for (temp::Temp *arg : arg_list->GetList()) {
-    if (params_passed++ < 6) {
+    if (params_passed < 6) {
       instr_list.Append(
         new assem::MoveInstr(
           "movq `s0,`d0",
@@ -525,6 +525,7 @@ temp::TempList *MoveArgs(assem::InstrList &instr_list, temp::TempList *arg_list,
         )
       );
     }
+    ++params_passed;
   }
   return result_list;
 }
@@ -533,7 +534,7 @@ void SetSP(assem::InstrList &instr_list, int offset) {
   temp::Temp *rsp = reg_manager->StackPointer();
   instr_list.Append(
     new assem::OperInstr(
-      "subq $" + std::to_string(offset * reg_manager->WordSize()) + "`d0",
+      "subq $" + std::to_string(offset * reg_manager->WordSize()) + ",`d0",
       new temp::TempList(rsp), NULL,
       NULL
     )
@@ -544,7 +545,7 @@ void ResetSP(assem::InstrList &instr_list, int offset) {
   temp::Temp *rsp = reg_manager->StackPointer();
   instr_list.Append(
     new assem::OperInstr(
-      "addq $" + std::to_string(offset * reg_manager->WordSize()) + "`d0",
+      "addq $" + std::to_string(offset * reg_manager->WordSize()) + ",`d0",
       new temp::TempList(rsp), NULL,
       NULL
     )
