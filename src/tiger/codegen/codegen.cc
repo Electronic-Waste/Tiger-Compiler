@@ -437,35 +437,23 @@ temp::Temp *ConstExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
 
 temp::Temp *CallExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
   /* TODO: Put your lab5 code here */
+  /* We do not need to get static link there since all args(<=6) will be moved to
+    registers and we treat static link as a normal arg. Meanwhile, external call does
+    not have static link, we could simply ignore it */
   temp::Temp *result_temp = temp::TempFactory::NewTemp();
-
-  /* Get static link*/
   std::list<tree::Exp *> arg_exp_list = this->args_->GetList();
-  tree::Exp *staticlink_exp = arg_exp_list.front();
-  arg_exp_list.pop_front();
 
   /* Update stack pointer */
   int stack_offset = (arg_exp_list.size() >= 6) ? arg_exp_list.size() - 6 : 0;
-  stack_offset++;   // Due to staticlink
   SetSP(instr_list, stack_offset);
 
-  /* Move staticlink to stack */
-  temp::Temp *staticlink_temp = staticlink_exp->Munch(instr_list, fs);
-  instr_list.Append(
-    new assem::MoveInstr(
-      "movq `s0,(%rsp)",
-      NULL, new temp::TempList(staticlink_temp)
-    )
-  );
-
-  /* Move remaining args to registers/stack */
+  /* Move args to registers/stack */
   tree::ExpList *new_arg_exp_list = new tree::ExpList();
   for (tree::Exp *e : arg_exp_list)
     new_arg_exp_list->Append(e);
   temp::TempList *arg_list = new_arg_exp_list->MunchArgs(instr_list, fs);
   temp::TempList *arg_temp_list = MoveArgs(instr_list, arg_list, fs);
   
-
   /* To be destroyed */
   temp::TempList *calldef = reg_manager->CallerSaves();
   calldef->Append(reg_manager->ReturnValue());
@@ -496,8 +484,10 @@ temp::Temp *CallExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
 temp::TempList *ExpList::MunchArgs(assem::InstrList &instr_list, std::string_view fs) {
   /* TODO: Put your lab5 code here */
   temp::TempList *result_temp_list = new temp::TempList();
-  for (tree::Exp *e : this->GetList())
-    result_temp_list->Append(e->Munch(instr_list, fs));
+  for (tree::Exp *e : this->GetList()) {
+    if (e == NULL) result_temp_list->Append(NULL);
+    else result_temp_list->Append(e->Munch(instr_list, fs));
+  }
   return result_temp_list;
 }
 
@@ -516,7 +506,7 @@ temp::TempList *MoveArgs(assem::InstrList &instr_list, temp::TempList *arg_list,
       result_list->Append(arg);
     }
     else {
-      /* Static link is stored in (%rsp) */
+      /* Return address is stored in (%rsp) */
       instr_list.Append(
         new assem::OperInstr(
           "movq `s0," + std::to_string((params_passed - 6 + 1) * reg_manager->WordSize()) + "(%rsp)",
@@ -531,6 +521,9 @@ temp::TempList *MoveArgs(assem::InstrList &instr_list, temp::TempList *arg_list,
 }
 
 void SetSP(assem::InstrList &instr_list, int offset) {
+  /* Check */
+  if (offset == 0) return;
+
   temp::Temp *rsp = reg_manager->StackPointer();
   instr_list.Append(
     new assem::OperInstr(
@@ -542,6 +535,9 @@ void SetSP(assem::InstrList &instr_list, int offset) {
 }
 
 void ResetSP(assem::InstrList &instr_list, int offset) {
+  /* Check */
+  if (offset == 0) return;
+
   temp::Temp *rsp = reg_manager->StackPointer();
   instr_list.Append(
     new assem::OperInstr(

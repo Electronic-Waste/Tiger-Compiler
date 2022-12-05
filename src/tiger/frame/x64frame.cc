@@ -131,7 +131,7 @@ X64Frame::X64Frame(temp::Label *name, std::list<bool> *formals) {
       params_passed++;
     }
     /* Params passed in stack */
-    /* In x86-64, staticlink is pushed to stack, which is adjacent to first param in stack */
+    /* In x86-64, return address is pushed to stack, which is adjacent to first param in stack */
     else {
       move_stm = new tree::MoveStm(
         access->ToExp(frame_ptr),

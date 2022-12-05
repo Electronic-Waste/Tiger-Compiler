@@ -249,8 +249,9 @@ class CallExp : public Exp {
 public:
   Exp *fun_;
   ExpList *args_;
+  // bool external_;
 
-  CallExp(Exp *fun, ExpList *args) : fun_(fun), args_(args) {}
+  CallExp(Exp *fun, ExpList *args) : fun_(fun), args_(args){}
   ~CallExp() override;
 
   void Print(FILE *out, int d) const override;
