@@ -186,13 +186,16 @@ assem::InstrList *ProcEntryExit2(assem::InstrList *body) {
 }
 
 assem::Proc *ProcEntryExit3(frame::Frame *frame, assem::InstrList *body) {
-  char buf[100];
-  sprintf(
-    buf,
-    "PROCEDURE %s\n",
-    temp::LabelFactory::LabelString(frame->name_).data()
-  );
-  return new assem::Proc(std::string(buf), body, "END\n");
+  std::string prologue = "";
+  /* Six callee-saved registers & 1 extra offset */
+  int framesize = -(frame->current_stack_pos - (6 - 1) * reg_manager->WordSize());
+  prologue += ".set " + frame->name_->Name() + "_framesize, " + std::to_string(framesize) + "\n";
+  prologue += frame->name_->Name() + ":\n";
+  prologue += "subq $" + std::to_string(framesize) + ",%rsp\n";
+  std::string epilogue = "";
+  epilogue += "addq $" + std::to_string(framesize) + ",%rsp\n";
+  epilogue += "retq\n";
+  return new assem::Proc(prologue, body, epilogue);
 }
 
 } // namespace frame

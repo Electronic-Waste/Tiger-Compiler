@@ -360,7 +360,7 @@ tr::ExpAndTy *OpExp::Translate(env::VEnvPtr venv, env::TEnvPtr tenv,
       return new tr::ExpAndTy(
         new tr::ExExp(
           new tree::BinopExp(
-            (tree::BinOp) this->oper_,
+            (tree::BinOp) (this->oper_ - 2),
             left_exp_ty->exp_->UnEx(),
             right_exp_ty->exp_->UnEx()
           )
@@ -581,12 +581,22 @@ tr::ExpAndTy *IfExp::Translate(env::VEnvPtr venv, env::TEnvPtr tenv,
   }
   else {
     tree::Stm *seq_stm = new tree::SeqStm(
-      new tree::LabelStm(true_label),
+      test_cx.stm_,
       new tree::SeqStm(
-        then_exp_ty->exp_->UnNx(),
-        new tree::LabelStm(false_label)
+        new tree::LabelStm(true_label),
+        new tree::SeqStm(
+          then_exp_ty->exp_->UnNx(),
+          new tree::LabelStm(false_label)
+        )
       )
     );
+    // tree::Stm *seq_stm = new tree::SeqStm(
+    //   new tree::LabelStm(true_label),
+    //   new tree::SeqStm(
+    //     then_exp_ty->exp_->UnNx(),
+    //     new tree::LabelStm(false_label)
+    //   )
+    // );
     return new tr::ExpAndTy(
       new tr::NxExp(seq_stm),
       type::VoidTy::Instance()

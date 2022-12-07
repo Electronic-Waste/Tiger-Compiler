@@ -34,12 +34,12 @@ class ExpList;
 class StmList;
 
 enum BinOp {
-  AND_OP,
-  OR_OP,
   PLUS_OP,
   MINUS_OP,
   MUL_OP,
   DIV_OP,
+  AND_OP,
+  OR_OP,
   LSHIFT_OP,
   RSHIFT_OP,
   ARSHIFT_OP,

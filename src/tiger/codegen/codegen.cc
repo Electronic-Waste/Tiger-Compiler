@@ -15,14 +15,6 @@ constexpr int maxlen = 1024;
 namespace cg {
 
 void CodeGen::PushReg(assem::InstrList &instr_list, temp::Temp *dst_addr, temp::Temp *reg) {
-  this->frame_->current_stack_pos -= reg_manager->WordSize();
-  instr_list.Append(
-    new assem::OperInstr(
-      "subq $" + std::to_string(reg_manager->WordSize()) + ",`d0",
-      new temp::TempList(dst_addr), NULL, 
-      NULL
-    )
-  );
   instr_list.Append(
     new assem::OperInstr(
       "movq `s0,(`d0)",
@@ -31,10 +23,16 @@ void CodeGen::PushReg(assem::InstrList &instr_list, temp::Temp *dst_addr, temp::
       NULL
     )
   );
+  instr_list.Append(
+    new assem::OperInstr(
+      "subq $" + std::to_string(reg_manager->WordSize()) + ",`d0",
+      new temp::TempList(dst_addr), NULL, 
+      NULL
+    )
+  );
 }
 
 void CodeGen::PopReg(assem::InstrList &instr_list, temp::Temp *src_addr, temp::Temp *reg) {
-  this->frame_->current_stack_pos += reg_manager->WordSize();
   instr_list.Append(
     new assem::OperInstr(
       "movq (`s0),`d0",
@@ -45,7 +43,7 @@ void CodeGen::PopReg(assem::InstrList &instr_list, temp::Temp *src_addr, temp::T
   );
   instr_list.Append(
     new assem::OperInstr(
-      "addq $" + std::to_string(reg_manager->WordSize()) + ",`d0",
+      "subq $" + std::to_string(reg_manager->WordSize()) + ",`d0",
       new temp::TempList(src_addr), NULL, 
       NULL
     )
@@ -95,8 +93,8 @@ void CodeGen::RestoreCalleeRegisters(assem::InstrList &instr_list, std::string_v
   );
 
   temp::TempList *calleesaves = reg_manager->CalleeSaves();
-  for (int i = 5; i >=0; i--) 
-    PopReg(instr_list, ptr_reg, calleesaves->NthTemp(i));
+  for (temp::Temp *t : calleesaves->GetList())
+    PopReg(instr_list, ptr_reg, t);
 }
 
 void CodeGen::Codegen() {
@@ -188,10 +186,11 @@ void CjumpStm::Munch(assem::InstrList &instr_list, std::string_view fs) {
     }
   }
 
+  /* Due to cmpq's calling convention, we need to reverse the order of left_temp & right_temp */
   instr_list.Append(
     new assem::OperInstr(
-      "cmpq 's0,'s1",
-      NULL, new temp::TempList{left_temp, right_temp},
+      "cmpq `s0,`s1",
+      NULL, new temp::TempList{right_temp, left_temp},
       NULL
     )
   );
@@ -206,9 +205,9 @@ void CjumpStm::Munch(assem::InstrList &instr_list, std::string_view fs) {
 
 void MoveStm::Munch(assem::InstrList &instr_list, std::string_view fs) {
   /* TODO: Put your lab5 code here */
-  temp::Temp *src_temp = this->src_->Munch(instr_list, fs);
-  temp::Temp *dst_temp = this->dst_->Munch(instr_list, fs);
   if (typeid(*this->dst_) == typeid(tree::TempExp)) {
+    temp::Temp *src_temp = this->src_->Munch(instr_list, fs);
+    temp::Temp *dst_temp = this->dst_->Munch(instr_list, fs);
     instr_list.Append(
       new assem::MoveInstr(
         "movq `s0,`d0",
@@ -218,9 +217,11 @@ void MoveStm::Munch(assem::InstrList &instr_list, std::string_view fs) {
     );
   }
   else if (typeid(*this->dst_) == typeid(tree::MemExp)) {
+    temp::Temp *src_temp = this->src_->Munch(instr_list, fs);
+    temp::Temp *dst_temp = ((tree::MemExp *) this->dst_)->exp_->Munch(instr_list, fs);
     instr_list.Append(
       new assem::OperInstr(
-        "movq 's0,(`s1)",
+        "movq `s0,(`s1)",
         NULL, new temp::TempList{src_temp, dst_temp},
         NULL
       )
@@ -276,22 +277,24 @@ temp::Temp *BinopExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
       return result_temp;
     }
     case MUL_OP: {
+      temp::Temp *rax = reg_manager->GetRegister(0);
+      temp::Temp *rdx = reg_manager->GetRegister(3);
       instr_list.Append(
         new assem::MoveInstr(
           "movq `s0,`d0",
-          new temp::TempList(result_temp),
+          new temp::TempList(rax),
           new temp::TempList(left_temp)
         )
       );
       instr_list.Append(
         new assem::OperInstr(
-          "imulq `s0,`d0",
-          new temp::TempList{result_temp},
-          new temp::TempList{right_temp},
+          "imulq `d0",
+          new temp::TempList{rax, rdx},
+          new temp::TempList{right_temp, rax},
           NULL
         )
       );
-      return result_temp;
+      return rax;
     }
     case DIV_OP: {
       temp::Temp *rax = reg_manager->GetRegister(0);
@@ -391,7 +394,7 @@ temp::Temp *TempExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
   temp::Temp *result_temp = temp::TempFactory::NewTemp();
   instr_list.Append(
     new assem::OperInstr(
-      "leaq " + std::string(fs) + "_framesize(%rsp),'d0",
+      "leaq " + std::string(fs) + "_framesize(%rsp),`d0",
       new temp::TempList(result_temp),
       new temp::TempList(reg_manager->StackPointer()),
       NULL
@@ -466,18 +469,11 @@ temp::Temp *CallExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
       NULL
     )
   );
-  instr_list.Append(
-    new assem::MoveInstr(
-      "movq `s0,`d0",
-      new temp::TempList(result_temp),
-      new temp::TempList(reg_manager->ReturnValue())
-    )
-  );
 
   /* Reset stack pointer */
   ResetSP(instr_list, stack_offset);
 
-  return result_temp;
+  return reg_manager->ReturnValue();
 
 }
 
