@@ -816,6 +816,7 @@ tr::Exp *FunctionDec::Translate(env::VEnvPtr venv, env::TEnvPtr tenv,
     env::FunEntry *func_entry = (env::FunEntry *) venv->Look(fundec->name_);
     std::list<type::Field *> param_list = fundec->params_->MakeFieldList(tenv, errormsg)->GetList();
     auto formal_it = func_entry->level_->frame_->formals_->begin();
+    ++formal_it;  // skip the first access in frame_ which is the access of static link
     for (type::Field *param_it : param_list) {
       tr::Access *param_it_access = new tr::Access(func_entry->level_, *formal_it);
       venv->Enter(param_it->name_, new env::VarEntry(param_it_access, param_it->ty_->ActualTy()));
