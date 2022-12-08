@@ -288,7 +288,7 @@ temp::Temp *BinopExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
       );
       instr_list.Append(
         new assem::OperInstr(
-          "imulq `d0",
+          "imulq `s0",
           new temp::TempList{rax, rdx},
           new temp::TempList{right_temp, rax},
           NULL
