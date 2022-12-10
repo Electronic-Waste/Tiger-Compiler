@@ -446,15 +446,17 @@ temp::Temp *CallExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
   temp::Temp *result_temp = temp::TempFactory::NewTemp();
   std::list<tree::Exp *> arg_exp_list = this->args_->GetList();
 
-  /* Update stack pointer */
-  int stack_offset = (arg_exp_list.size() >= 6) ? arg_exp_list.size() - 6 : 0;
-  SetSP(instr_list, stack_offset);
-
-  /* Move args to registers/stack */
+  /* Generate args */
   tree::ExpList *new_arg_exp_list = new tree::ExpList();
   for (tree::Exp *e : arg_exp_list)
     new_arg_exp_list->Append(e);
   temp::TempList *arg_list = new_arg_exp_list->MunchArgs(instr_list, fs);
+
+  /* Update stack pointer (between ArgGen & ArgMov because we need to get correct fp) */
+  int stack_offset = (arg_exp_list.size() >= 6) ? arg_exp_list.size() - 6 : 0;
+  SetSP(instr_list, stack_offset);
+
+  /* Move args to registers/stack */
   temp::TempList *arg_temp_list = MoveArgs(instr_list, arg_list, fs);
   
   /* To be destroyed */
@@ -502,10 +504,10 @@ temp::TempList *MoveArgs(assem::InstrList &instr_list, temp::TempList *arg_list,
       result_list->Append(arg);
     }
     else {
-      /* Return address is stored in (%rsp) */
+      /* Return address is stored in (%rsp), but is automatically processed by 'call' */
       instr_list.Append(
         new assem::OperInstr(
-          "movq `s0," + std::to_string((params_passed - 6 + 1) * reg_manager->WordSize()) + "(%rsp)",
+          "movq `s0," + std::to_string((params_passed - 6) * reg_manager->WordSize()) + "(%rsp)",
           NULL, new temp::TempList(arg),
           NULL
         )
