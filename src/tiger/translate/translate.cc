@@ -220,7 +220,7 @@ tr::ExpAndTy *SubscriptVar::Translate(env::VEnvPtr venv, env::TEnvPtr tenv,
           tree::BinOp::PLUS_OP,
           var_exp_ty->exp_->UnEx(),
           new tree::BinopExp(
-            tree::BinOp::MINUS_OP,
+            tree::BinOp::MUL_OP,
             subscript_exp_ty->exp_->UnEx(),
             new tree::ConstExp(reg_manager->WordSize())
           )
@@ -757,6 +757,7 @@ tr::ExpAndTy *LetExp::Translate(env::VEnvPtr venv, env::TEnvPtr tenv,
   venv->EndScope();
   return ret_exp_ty;
 }
+
 
 tr::ExpAndTy *ArrayExp::Translate(env::VEnvPtr venv, env::TEnvPtr tenv,
                                   tr::Level *level, temp::Label *label,                    
