@@ -278,7 +278,7 @@ tr::ExpAndTy *CallExp::Translate(env::VEnvPtr venv, env::TEnvPtr tenv,
   std::list<absyn::Exp *> arg_list = this->args_->GetList();
   tree::ExpList *tree_arg_list = new tree::ExpList();
   tree::Exp *call_exp;
-  type::Ty *result_ty;
+  type::Ty *result_ty = func_entry->result_;
   for (absyn::Exp *e : arg_list) {
     tr::ExpAndTy *arg_exp_ty = e->Translate(venv, tenv, level, label, errormsg);
     tree_arg_list->Append(arg_exp_ty->exp_->UnEx());
@@ -286,7 +286,6 @@ tr::ExpAndTy *CallExp::Translate(env::VEnvPtr venv, env::TEnvPtr tenv,
   /* External function call */
   if (func_entry->level_ == NULL) {
     call_exp = frame::ExternelCall(this->func_->Name(), tree_arg_list);
-    result_ty = type::VoidTy::Instance();
   }
   /* Need to find static link */
   else {
@@ -296,7 +295,6 @@ tr::ExpAndTy *CallExp::Translate(env::VEnvPtr venv, env::TEnvPtr tenv,
       new tree::NameExp(func_entry->label_),
       tree_arg_list
     );
-    result_ty = func_entry->result_;
   }
   return new tr::ExpAndTy(
     new tr::ExExp(call_exp),
