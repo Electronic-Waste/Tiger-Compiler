@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <list>
 #include <string>
+#include <vector>
 
 #include "tiger/frame/temp.h"
 
@@ -50,8 +51,8 @@ enum RelOp {
   EQ_OP,
   NE_OP,
   LT_OP,
-  GT_OP,
   LE_OP,
+  GT_OP,
   GE_OP,
   ULT_OP,
   ULE_OP,
@@ -248,8 +249,9 @@ class CallExp : public Exp {
 public:
   Exp *fun_;
   ExpList *args_;
+  // bool external_;
 
-  CallExp(Exp *fun, ExpList *args) : fun_(fun), args_(args) {}
+  CallExp(Exp *fun, ExpList *args) : fun_(fun), args_(args){}
   ~CallExp() override;
 
   void Print(FILE *out, int d) const override;
@@ -288,6 +290,10 @@ private:
 
 RelOp NotRel(RelOp);  // a op b == not(a NotRel(op) b)
 RelOp Commute(RelOp); // a op b == b Commute(op) a
+
+temp::TempList *MoveArgs(assem::InstrList &instr_list, temp::TempList *arg_list, std::string_view fs);
+void SetSP(assem::InstrList &instr_list, int offset);
+void ResetSP(assem::InstrList &instr_list, int offset);
 
 } // namespace tree
 

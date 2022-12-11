@@ -121,6 +121,9 @@ test_lab4() {
     # Only check the error message part
     awk -F: '{print $3}' "$ref" >/tmp/ref.txt
     grep -Fof /tmp/ref.txt /tmp/output.txt >&/tmp/output_sel.txt
+    # echo "----------------"
+    # cat /tmp/output_sel.txt
+    # echo "----------------"
     diff -w -B /tmp/output_sel.txt /tmp/ref.txt
     if [[ $? != 0 ]]; then
       echo "Error: Output mismatch [$testcase_name]"

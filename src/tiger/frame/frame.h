@@ -4,6 +4,7 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "tiger/frame/temp.h"
 #include "tiger/translate/tree.h"
@@ -71,13 +72,24 @@ protected:
 class Access {
 public:
   /* TODO: Put your lab5 code here */
-  
+  virtual tree::Exp *ToExp(tree::Exp *framePtr) const = 0;
   virtual ~Access() = default;
   
 };
 
 class Frame {
   /* TODO: Put your lab5 code here */
+public:
+  int current_stack_pos;
+  temp::Label *name_;
+  std::list<tree::Stm *> *moves_;
+  std::list<frame::Access *> *formals_;
+
+  virtual frame::Access *AllocLocal(bool isEscape) = 0;
+
+  virtual std::string GetLabel() {return this->name_->Name();}
+
+  Frame() = default;
 };
 
 /**
@@ -132,6 +144,19 @@ private:
 };
 
 /* TODO: Put your lab5 code here */
+/* Encapsulate call function and some special conditions */
+tree::Exp *ExternelCall(std::string func_name, tree::ExpList *args);
+
+/* 1. Save escape args(including static link) to frame, move non-escape args to new temp */
+/* 2. Save callee-saved regs used in the function */
+/* 3. Restore callee-saved regs */
+tree::Stm *ProcEntryExit1(frame::Frame *frame, tree::Stm *stm);
+
+/* 1. Add "sink" instr to fucntion body to inform regmanager of live regs */
+assem::InstrList *ProcEntryExit2(assem::InstrList *body);
+
+/* 1. Generate assembly code for handling prologue and epilogue */
+assem::Proc *ProcEntryExit3(frame::Frame *frame, assem::InstrList *body);
 
 } // namespace frame
 
