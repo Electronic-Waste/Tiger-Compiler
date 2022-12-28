@@ -395,8 +395,7 @@ temp::Temp *TempExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
   instr_list.Append(
     new assem::OperInstr(
       "leaq " + std::string(fs) + "_framesize(%rsp),`d0",
-      new temp::TempList(result_temp),
-      new temp::TempList(reg_manager->StackPointer()),
+      new temp::TempList(result_temp), NULL,
       NULL
     )
   );
@@ -522,11 +521,10 @@ void SetSP(assem::InstrList &instr_list, int offset) {
   /* Check */
   if (offset == 0) return;
 
-  temp::Temp *rsp = reg_manager->StackPointer();
   instr_list.Append(
     new assem::OperInstr(
-      "subq $" + std::to_string(offset * reg_manager->WordSize()) + ",`d0",
-      new temp::TempList(rsp), NULL,
+      "subq $" + std::to_string(offset * reg_manager->WordSize()) + ",%rsp",
+      NULL, NULL,
       NULL
     )
   );
@@ -536,11 +534,10 @@ void ResetSP(assem::InstrList &instr_list, int offset) {
   /* Check */
   if (offset == 0) return;
 
-  temp::Temp *rsp = reg_manager->StackPointer();
   instr_list.Append(
     new assem::OperInstr(
-      "addq $" + std::to_string(offset * reg_manager->WordSize()) + ",`d0",
-      new temp::TempList(rsp), NULL,
+      "addq $" + std::to_string(offset * reg_manager->WordSize()) + ",%rsp",
+      NULL, NULL,
       NULL
     )
   );
