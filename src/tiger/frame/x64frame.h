@@ -23,8 +23,6 @@ public:
 
   [[nodiscard]] temp::TempList *ReturnSink() override;
 
-  [[nodiscard]] temp::TempList *AllWithoutRsp() override;
-
   [[nodiscard]] int WordSize() override;
 
   [[nodiscard]] temp::Temp *FramePointer() override;
