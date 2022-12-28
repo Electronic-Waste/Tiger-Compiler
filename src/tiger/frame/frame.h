@@ -54,6 +54,12 @@ public:
   [[nodiscard]] virtual temp::TempList *ReturnSink() = 0;
 
   /**
+   * Get all registers except for %rsp
+   * @return all registers except fo %rsp
+   */
+  [[nodiscard]] virtual temp::TempList *AllWithoutRsp() = 0;
+
+  /**
    * Get word size
    */
   [[nodiscard]] virtual int WordSize() = 0;
