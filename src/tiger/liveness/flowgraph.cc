@@ -18,7 +18,12 @@ void FlowGraphFactory::AssemFlowGraph() {
     }
     /* If it's a jump/Cjump instr, add to tempory jump_list */
     else if (typeid(*instr) == typeid(assem::OperInstr) && ((assem::OperInstr *) instr)->jumps_) {
-      last_node = NULL;
+      assem::OperInstr *jump_instr = (assem::OperInstr *) instr;
+      std::string instr_str = jump_instr->assem_;
+      /* jump: 1 flow */
+      if (instr_str.substr(0, 2) == "jm") last_node = NULL;
+      /* Cjump: 2 flow */
+      else last_node = new_node;
       assem::Targets *jump_targets = ((assem::OperInstr *) instr)->jumps_;
       jump_list.emplace_back(new_node, jump_targets);
     }

@@ -3,7 +3,7 @@
 #include <cassert>
 #include <sstream>
 
-#define DEBUG
+#define DEBUGx
 
 #ifdef DEBUG
   #define codegen_log(fmt, args...) \

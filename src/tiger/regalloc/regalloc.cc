@@ -2,7 +2,7 @@
 
 #include "tiger/output/logger.h"
 
-#define DEBUG
+#define DEBUGx
 
 #ifdef DEBUG
   #define regalloc_log(fmt, args...) \
@@ -127,7 +127,7 @@ void RegAllocator::MakeWorkList() {
 
 live::INodeListPtr RegAllocator::Adjacent(live::INodePtr n) {
     /* adjList[n] \ (selectStack union coalescedNodes)*/
-    return n->Succ()->Diff(selectStack->Union(coalescedNodes));
+    return n->Adj()->Diff(selectStack->Union(coalescedNodes));
 }
 
 live::MoveList *RegAllocator::NodeMoves(live::INodePtr n) {
@@ -168,10 +168,10 @@ void RegAllocator::EnableMoves(live::INodeListPtr nodes) {
             if (activeMoves->Contain(move_node.first, move_node.second)) {
                 /* activeMoves <- activeMoves \ {move_node} */
                 activeMoves->Delete(move_node.first, move_node.second);
-                activeMoves->Delete(move_node.second, move_node.first);
+                // activeMoves->Delete(move_node.second, move_node.first);
                 /* worklistMoves <- worklistMoves union {move_node} */
                 worklistMoves->Append(move_node.first, move_node.second);
-                worklistMoves->Append(move_node.second, move_node.first);
+                // worklistMoves->Append(move_node.second, move_node.first);
             }
         }
     }
@@ -308,7 +308,7 @@ void RegAllocator::AssignColors() {
         for (auto reg : reg_manager->Registers()->GetList()) {
             okColors.push_back(reg_manager->temp_map_->Look(reg));
         }
-        for (auto w : Adjacent(n)->GetList()) {
+        for (auto w : n->Succ()->GetList()) {
             if (coloredNodes->Contain(GetAilas(w))) {
                 /* okColors <- okColors \ {color[GetAlias(w)]} */
                 auto ok_color_it = okColors.begin();
@@ -323,7 +323,6 @@ void RegAllocator::AssignColors() {
         else {
             coloredNodes->Append(n);
             auto c = okColors.front();
-            okColors.pop_front();
             color[n] = c;
         }
     }

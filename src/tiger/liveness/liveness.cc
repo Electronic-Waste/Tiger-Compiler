@@ -1,6 +1,6 @@
 #include "tiger/liveness/liveness.h"
 
-#define DEBUG
+#define DEBUGx
 
 #ifdef DEBUG
   #define liveness_log(fmt, args...) \
@@ -262,8 +262,8 @@ void LiveGraphFactory::InterfGraph() {
     assem::Instr *flow_node_instr = flow_node->NodeInfo();
     temp::TempList *out_temp_list = out_->Look(flow_node);
     /* Condition: instr_type != assem::MoveInstr */
+    ShowInstr(flow_node_instr);
     if (typeid(*flow_node_instr) != typeid(assem::MoveInstr)) {
-      ShowInstr(flow_node_instr);
       temp::TempList *flow_node_def = flow_node_instr->Def();
       if (flow_node_def == NULL) continue;
       for (auto def : flow_node_def->GetList()) {
@@ -281,23 +281,29 @@ void LiveGraphFactory::InterfGraph() {
       temp::TempList *flow_node_def = flow_node_instr->Def();
       temp::TempList *flow_node_use = flow_node_instr->Use();
       temp::TempList *out_subtract_use = Subtract(flow_node_use, out_temp_list);
+      // liveness_log("def_size: %d, use_size: %d, out-use_size: %d", flow_node_def->GetList().size(), flow_node_use->GetList().size(), out_subtract_use->GetList().size());
       /* Add conflict edges */
       for (auto def : flow_node_def->GetList()) {
         INodePtr def_node = temp_node_map_->Look(def);
+        /* In case def is not used */
+        if (def_node == NULL) {
+          def_node = live_graph_.interf_graph->NewNode(def);
+          temp_node_map_->Enter(def, def_node);
+        }
         for (auto temp_it : out_subtract_use->GetList()) {
+          // liveness_log("temp_it_no: %d", temp_it->Int());
           INodePtr temp_it_node = temp_node_map_->Look(temp_it);
+          // liveness_log("def_node: %lld, temp_it_node: %lld", def_node, temp_it_node);
           live_graph_.interf_graph->AddEdge(def_node, temp_it_node);
           live_graph_.interf_graph->AddEdge(temp_it_node, def_node);
         }
       }
       /* Add move edges */
-      for (auto def : flow_node_def->GetList()) {
-        INodePtr def_node = temp_node_map_->Look(def);
-        for (auto use : flow_node_use->GetList()) {
-          INodePtr use_node = temp_node_map_->Look(use);
-          live_graph_.moves->Append(use_node, def_node);
-        }
-      }
+      assert(flow_node_def->GetList().size() == 0);
+      assert(flow_node_use->GetList().size() == 0);
+      auto def = flow_node_def->NthTemp(0);
+      auto use = flow_node_use->NthTemp(0);
+      live_graph_.moves->Append(temp_node_map_->Look(use), temp_node_map_->Look(def));
     }
   }
 
