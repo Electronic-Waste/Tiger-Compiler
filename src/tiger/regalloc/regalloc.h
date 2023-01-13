@@ -9,6 +9,8 @@
 #include "tiger/regalloc/color.h"
 #include "tiger/util/graph.h"
 
+#include <set>
+#include <map>
 namespace ra {
 
 class Result {
@@ -32,18 +34,78 @@ public:
 class RegAllocator {
   /* TODO: Put your lab6 code here */
 public:
-  RegAllocator(frame::Frame *frame, std::unique_ptr<cg::AssemInstr> assem_instr);
-
+  RegAllocator(frame::Frame *frame_, std::unique_ptr<cg::AssemInstr> assem_instr_);
+  RegAllocator() = default;
+  ~RegAllocator() = default;
+  std::unique_ptr<Result> TransferResult();
   void RegAlloc();
+  void Build();
+  void AddEdge(live::INodePtr u, live::INodePtr v);
+  void MakeWorkList();
+  live::INodeListPtr Adjacent(live::INodePtr n);
+  live::MoveList *NodeMoves(live::INodePtr n);
+  bool MoveRelated(live::INodePtr n);
+  void Simplify();
+  void DecrementDegree(live::INodePtr m);
+  void EnableMoves(live::INodeListPtr nodes);
+  void Coalesce();
+  void AddWorkList(live::INodePtr u);
+  bool OK(live::INodePtr t, live::INodePtr r);
+  bool Conservative(live::INodeListPtr nodes);
+  live::INodePtr GetAilas(live::INodePtr n);
+  void Combine(live::INodePtr u, live::INodePtr v);
+  void Freeze();
+  void FreezeMoves(live::INodePtr n);
+  void SelectSpill();
+  void AssignColors();
+  void RewriteProgram();
 
-  std::unique_ptr<Result> TransferResult() { return std::move(result_);}
+  void ShowStatus();
 
 private:
-  std::unique_ptr<Result> result_;
+  const int K = 16;
+  std::unique_ptr<Result> result;
+  frame::Frame *frame;
+  std::unique_ptr<cg::AssemInstr> assem_instr;
 
-  frame::Frame *frame_;
+  live::LiveGraphFactory *live_graph_factory;
+  live::LiveGraph *live_graph;
 
-  std::unique_ptr<cg::AssemInstr> assem_instr_;
+  /* low degree & non-move-related nodes */
+  live::INodeListPtr simplifyWorklist;
+  /* low degree & move-related nodes */
+  live::INodeListPtr freezeWorklist;
+  /* high degree nodes */
+  live::INodeListPtr spillWorklist;
+  /* nodes to be spilled in this round */
+  live::INodeListPtr spilledNodes;
+  /* nodes that have been coalesced */
+  live::INodeListPtr coalescedNodes;
+  /* nodes that have benn colored*/
+  live::INodeListPtr coloredNodes;
+  /* a stack containing nodes deleted from interf_graph */
+  live::INodeListPtr selectStack;
+
+  /* move instrs that have been coalesced */
+  live::MoveList *coalescedMoves;
+  /* constrained move instrs*/
+  live::MoveList *constrainedMoves;
+  /* frozen move instrs */
+  live::MoveList *frozenMoves;
+  /* move instrs likely to be coalesced */  
+  live::MoveList *worklistMoves;
+  /* move instr not prepared for coalescing */
+  live::MoveList *activeMoves;
+
+  /* map: node -> its degree */
+  std::map<live::INodePtr, int> degree;
+  /* map: node -> its move instrs */
+  std::map<live::INodePtr, live::MoveList *> moveList;
+  /* map: node -> the node coalescing this node */
+  std::map<live::INodePtr, live::INodePtr> alias;
+  /* map: node -> its color */
+  std::map<live::INodePtr, std::string *> color;
+  
 };
 
 } // namespace ra

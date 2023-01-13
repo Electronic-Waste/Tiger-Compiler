@@ -3,6 +3,19 @@
 #include <cassert>
 #include <sstream>
 
+#define DEBUG
+
+#ifdef DEBUG
+  #define codegen_log(fmt, args...) \
+    do { \
+      printf("[CODEGEN_LOG][%s:%d->%s]" fmt "\n", \
+              __FILE__, __LINE__, __FUNCTION__, ##args); \
+    } while (0);
+#else
+  #define codegen_log(fmt, args...) \
+    do {} while (0);
+#endif
+
 extern frame::RegManager *reg_manager;
 
 namespace {
@@ -52,6 +65,7 @@ void CodeGen::PopReg(assem::InstrList &instr_list, temp::Temp *src_addr, temp::T
 
 void CodeGen::StoreCalleeRegisters(assem::InstrList &instr_list, std::string_view fs) {
   temp::Temp *ptr_reg = temp::TempFactory::NewTemp();
+  codegen_log("StoreCalleeRegister: %d", ptr_reg->Int());
   instr_list.Append(
     new assem::OperInstr(
       "leaq " + std::string(fs) + "_framesize(%rsp),`d0",
@@ -76,6 +90,7 @@ void CodeGen::StoreCalleeRegisters(assem::InstrList &instr_list, std::string_vie
 
 void CodeGen::RestoreCalleeRegisters(assem::InstrList &instr_list, std::string_view fs) {
   temp::Temp *ptr_reg = temp::TempFactory::NewTemp();
+  codegen_log("RestoreCalleeRegisters: %d", ptr_reg->Int());
   instr_list.Append(
     new assem::OperInstr(
       "leaq " + std::string(fs) + "_framesize(%rsp),`d0",
@@ -392,6 +407,7 @@ temp::Temp *TempExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
     return this->temp_;
   
   temp::Temp *result_temp = temp::TempFactory::NewTemp();
+  codegen_log("TempExp Munch: %d", result_temp->Int());
   instr_list.Append(
     new assem::OperInstr(
       "leaq " + std::string(fs) + "_framesize(%rsp),`d0",

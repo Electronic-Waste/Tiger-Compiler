@@ -53,7 +53,7 @@ public:
         out_(std::make_unique<graph::Table<assem::Instr, temp::TempList>>()),
         temp_node_map_(new tab::Table<temp::Temp, INode>()) {}
   void Liveness();
-  LiveGraph GetLiveGraph() { return live_graph_; }
+  LiveGraph *GetLiveGraph() { return &live_graph_; }
   tab::Table<temp::Temp, INode> *GetTempNodeMap() { return temp_node_map_; }
 
 private:
@@ -66,6 +66,8 @@ private:
 
   void LiveMap();
   void InterfGraph();
+  void ShowInOut();
+  void ShowInstr(assem::Instr *);
 };
 
 } // namespace live
